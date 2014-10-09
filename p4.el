@@ -1927,7 +1927,10 @@ followed by \"delete\"."
   "List open files and display file status."
   nil
   (p4-call-command cmd args :mode 'p4-basic-list-mode
-                   :pop-up-output (lambda () t)))
+   :callback (lambda ()
+               (p4-regexp-create-links "\\<change \\([1-9][0-9]*\\) ([a-z]+)\n"
+                                       'pending "Edit change"))
+   :pop-up-output (lambda () t)))
 
 (defp4cmd* print
   "Write a depot file to a buffer."
@@ -2919,6 +2922,7 @@ is NIL, otherwise return NIL."
         (help (get-char-property pnt 'help))
         (job (get-char-property pnt 'job))
         (label (get-char-property pnt 'label))
+        (pending (get-char-property pnt 'pending))
         (user (get-char-property pnt 'user))
         (rev (get-char-property pnt 'rev)))
     (cond ((and (not action) rev)
@@ -2934,6 +2938,7 @@ is NIL, otherwise return NIL."
           (change (p4-describe-internal
                    (append (p4-make-list-from-string p4-default-diff-options)
                            (list (format "%d" change)))))
+          (pending (p4-change (list pending)))
           (user (p4-user user))
           (group (p4-group group))
           (client (p4-client client))
@@ -2951,12 +2956,12 @@ is NIL, otherwise return NIL."
                  (link-depot-name (get-char-property pnt 'link-depot-name))
                  (block-client-name (get-char-property pnt 'block-client-name))
                  (block-depot-name (get-char-property pnt 'block-depot-name))
-                 (p4-history-for (get-char-property pnt 'history-for))
+                 (history-for (get-char-property pnt 'history-for))
                  (first-line (get-char-property pnt 'first-line))
                  (start (get-char-property pnt 'start)))
              (cond
-              (p4-history-for
-               (p4-file-change-log "filelog" (list p4-history-for)))
+              (history-for
+               (p4-file-change-log "filelog" (list history-for)))
               ((or link-client-name link-depot-name)
                (p4-find-file-or-print-other-window
                 link-client-name link-depot-name))
@@ -3044,7 +3049,8 @@ is NIL, otherwise return NIL."
   '(("^\\(//.*#[1-9][0-9]*\\) - \\(?:\\(?:unshelved, \\)?opened for \\)?\\(?:move/\\)?add" 1 'p4-depot-add-face)
     ("^\\(//.*#[1-9][0-9]*\\) - \\(?:\\(?:unshelved, \\)?opened for \\)?\\(?:branch\\|integrate\\)" 1 'p4-depot-branch-face)
     ("^\\(//.*#[1-9][0-9]*\\) - \\(?:\\(?:unshelved, \\)?opened for \\)?\\(?:move/\\)?delete" 1 'p4-depot-delete-face)
-    ("^\\(//.*#[1-9][0-9]*\\) - \\(?:\\(?:unshelved, \\)?opened for \\)?\\(?:edit\\|updating\\)" 1 'p4-depot-edit-face)))
+    ("^\\(//.*#[1-9][0-9]*\\) - \\(?:\\(?:unshelved, \\)?opened for \\)?\\(?:edit\\|updating\\)" 1 'p4-depot-edit-face)
+    ("\\<change \\([1-9][0-9]*\\) ([a-z]+)$" 1 'p4-change-face)))
 
 (define-derived-mode p4-basic-list-mode p4-basic-mode "P4 Basic List"
   (setq font-lock-defaults '(p4-basic-list-font-lock-keywords t)))
@@ -3057,15 +3063,17 @@ is NIL, otherwise return NIL."
 
 (defun p4-basic-list-activate ()
   (interactive)
-  (save-excursion
-    (beginning-of-line)
-    (when (looking-at "^\\(\\(//.*\\)#[1-9][0-9]*\\) - \\(\\(?:move/\\)?add\\)?")
-      (if (match-string 3)
-          (let ((args (list "where" (match-string 2))))
-            (p4-with-temp-buffer args
-              (when (looking-at "//[^ ]+ //[^ ]+ \\(.*\\)")
-                (find-file (match-string 1)))))
-        (p4-depot-find-file (match-string 1))))))
+  (if (get-char-property (point) 'active)
+      (p4-buffer-commands (point))
+    (save-excursion
+      (beginning-of-line)
+      (when (looking-at "^\\(\\(//.*\\)#[1-9][0-9]*\\) - \\(\\(?:move/\\)?add\\)?")
+        (if (match-string 3)
+            (let ((args (list "where" (match-string 2))))
+              (p4-with-temp-buffer args
+                (when (looking-at "//[^ ]+ //[^ ]+ \\(.*\\)")
+                  (find-file (match-string 1)))))
+          (p4-depot-find-file (match-string 1)))))))
 
 
 ;;; Status List Mode:
