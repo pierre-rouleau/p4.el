@@ -1926,7 +1926,7 @@ followed by \"delete\"."
 (defp4cmd* opened
   "List open files and display file status."
   nil
-  (p4-call-command cmd args :mode 'p4-basic-list-mode
+  (p4-call-command cmd args :mode 'p4-opened-list-mode
    :callback (lambda ()
                (p4-regexp-create-links "\\<change \\([1-9][0-9]*\\) ([a-z]+)\n"
                                        'pending "Edit change"))
@@ -3035,9 +3035,9 @@ is NIL, otherwise return NIL."
 
 ;;; Basic List Mode:
 
-;; This is for the output of files, sync, have, integ, opened,
-;; labelsync, and reconcile, which consists of a list of lines
-;; starting with a depot filespec.
+;; This is for the output of files, sync, have, integ, labelsync, and
+;; reconcile, which consists of a list of lines starting with a depot
+;; filespec.
 
 (defvar p4-basic-list-mode-map
   (let ((map (p4-make-derived-map p4-basic-mode-map)))
@@ -3049,17 +3049,19 @@ is NIL, otherwise return NIL."
   '(("^\\(//.*#[1-9][0-9]*\\) - \\(?:\\(?:unshelved, \\)?opened for \\)?\\(?:move/\\)?add" 1 'p4-depot-add-face)
     ("^\\(//.*#[1-9][0-9]*\\) - \\(?:\\(?:unshelved, \\)?opened for \\)?\\(?:branch\\|integrate\\)" 1 'p4-depot-branch-face)
     ("^\\(//.*#[1-9][0-9]*\\) - \\(?:\\(?:unshelved, \\)?opened for \\)?\\(?:move/\\)?delete" 1 'p4-depot-delete-face)
-    ("^\\(//.*#[1-9][0-9]*\\) - \\(?:\\(?:unshelved, \\)?opened for \\)?\\(?:edit\\|updating\\)" 1 'p4-depot-edit-face)
-    ("\\<change \\([1-9][0-9]*\\) ([a-z]+)$" 1 'p4-change-face)))
+    ("^\\(//.*#[1-9][0-9]*\\) - \\(?:\\(?:unshelved, \\)?opened for \\)?\\(?:edit\\|updating\\)" 1 'p4-depot-edit-face)))
 
 (define-derived-mode p4-basic-list-mode p4-basic-mode "P4 Basic List"
   (setq font-lock-defaults '(p4-basic-list-font-lock-keywords t)))
 
+(defvar p4-basic-list-filename-regexp
+  "^\\(\\(//.*\\)#[1-9][0-9]*\\) - \\(\\(?:move/\\)?add\\)?")
+
 (defun p4-basic-list-get-filename ()
   (save-excursion
     (beginning-of-line)
-    (when (looking-at "^\\(//.*#[1-9][0-9]*\\) - ")
-      (match-string 1))))
+    (when (looking-at p4-basic-list-filename-regexp)
+      (match-string (if (eq major-mode 'p4-opened-list-mode) 2 1)))))
 
 (defun p4-basic-list-activate ()
   (interactive)
@@ -3067,13 +3069,52 @@ is NIL, otherwise return NIL."
       (p4-buffer-commands (point))
     (save-excursion
       (beginning-of-line)
-      (when (looking-at "^\\(\\(//.*\\)#[1-9][0-9]*\\) - \\(\\(?:move/\\)?add\\)?")
+      (when (looking-at p4-basic-list-filename-regexp)
         (if (match-string 3)
             (let ((args (list "where" (match-string 2))))
               (p4-with-temp-buffer args
                 (when (looking-at "//[^ ]+ //[^ ]+ \\(.*\\)")
                   (find-file (match-string 1)))))
           (p4-depot-find-file (match-string 1)))))))
+
+
+;;; Opened list mode:
+
+;; This is for the output of p4 opened, where each line starts with
+;; the depot filename for an opened file.
+
+(defvar p4-opened-list-mode-map
+  (let ((map (p4-make-derived-map p4-basic-list-mode-map)))
+    (define-key map "r" 'p4-revert)
+    (define-key map "t" 'p4-opened-list-type)
+    (define-key map "c" 'p4-opened-list-change)
+    map)
+  "The key map to use in P4 Status List Mode.")
+
+(defvar p4-opened-list-font-lock-keywords
+  (append p4-basic-list-font-lock-keywords
+          '(("\\<change \\([1-9][0-9]*\\) ([a-z]+)$" 1 'p4-change-face))))
+
+(define-derived-mode p4-opened-list-mode p4-basic-list-mode "P4 Opened List"
+  (setq font-lock-defaults '(p4-opened-list-font-lock-keywords t)))
+
+(defun p4-opened-list-type (type)
+  (interactive "sNew filetype: ")
+  (save-excursion
+    (beginning-of-line)
+    (when (looking-at p4-basic-list-filename-regexp)
+      (p4-reopen (list "-t" type (match-string 2))))))
+
+(defun p4-opened-list-change (change)
+  (interactive 
+   (let ((completion (p4-get-completion 'change)))
+     (list (completing-read "New change: "
+                            (p4-completion-arg-completion-fn completion)
+                            nil nil "" (p4-completion-history completion)))))
+  (save-excursion
+    (beginning-of-line)
+    (when (looking-at p4-basic-list-filename-regexp)
+      (p4-reopen (list "-c" change (match-string 2))))))
 
 
 ;;; Status List Mode:
