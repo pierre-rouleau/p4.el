@@ -92,7 +92,7 @@
   :group 'p4)
 
 (defcustom p4-default-diff-options "-du"
-  "Options to pass to \"diff\", \"diff2\", and \"describe\" commands.
+  "Options to pass to diff, diff2, describe, and resolve.
 Set to:
 -dn     (RCS)
 -dc[n]  (context; optional argument specifies number of context lines)
@@ -1966,7 +1966,7 @@ changelist."
 
 (defp4cmd* resolve
   "Resolve integrations and updates to workspace files."
-  nil
+  (list (concat p4-default-diff-options " "))
   (let (buffer (buf-name "*P4 resolve*"))
     (setq buffer (get-buffer buf-name))
     (if (and (buffer-live-p buffer)
