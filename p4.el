@@ -322,7 +322,7 @@ commit command.")
 # Type C-c C-c to send the form to the server.
 # Type C-x k to cancel the operation.
 #\n" p4-version)
-  "Text added to top of form.")
+  "Text added to top of generic form.")
 
 ;; Local variables in P4 depot buffers.
 (defvar p4-default-directory nil "Original value of default-directory.")
@@ -1122,13 +1122,14 @@ opposed to showing it in the echo area)."
 
 ;;; Form commands:
 
-(defun p4-form-callback (regexp cmd success-callback failure-callback)
+(defun p4-form-callback (regexp cmd success-callback failure-callback
+                                mode head-text)
   (goto-char (point-min))
   ;; The Windows p4 client outputs this line before the spec unless
   ;; run via CMD.EXE.
   (when (looking-at "Found client MATCH : .*\n") (replace-match ""))
-  (insert p4-form-head-text)
-  (p4-form-mode)
+  (insert head-text)
+  (funcall mode)
   (pop-to-buffer (current-buffer))
   (setq p4-form-commit-command cmd)
   (setq p4-form-commit-success-callback success-callback)
@@ -1143,7 +1144,9 @@ opposed to showing it in the echo area)."
 (defun* p4-form-command (cmd &optional args &key move-to commit-cmd
                              success-callback
                              (failure-callback
-                              'p4-form-commit-failure-callback-default))
+                              'p4-form-commit-failure-callback-default)
+                             (mode 'p4-form-mode)
+                             (head-text 'p4-form-head-text))
   "Maybe start a form-editing session.
 cmd is the p4 command to run \(it must take -o and output a form\).
 args is a list of arguments to pass to the p4 command.
@@ -1156,7 +1159,10 @@ The remaining arguments are keyword arguments:
 `p4-form-commit' is called \(it must take -i and a form on
 standard input\). If not supplied, cmd is reused.
 :success-callback is a function that is called if the commit succeeds.
-:failure-callback is a function that is called if the commit fails."
+:failure-callback is a function that is called if the commit fails.
+:mode is the mode for the form buffer.
+:head-text is the text to insert at the top of the form buffer."
+  (unless mode (error "mode"))
   (when (member "-i" args)
     (error "'%s -i' is not supported here." cmd))
   (if (member "-d" args)
@@ -1170,11 +1176,13 @@ standard input\). If not supplied, cmd is reused.
         (lexical-let* ((move-to move-to)
                        (commit-cmd (or commit-cmd cmd))
                        (success-callback success-callback)
-                       (failure-callback failure-callback))
+                       (failure-callback failure-callback)
+                       (mode mode)
+                       (head-text head-text))
           (p4-call-command cmd args
            :callback (lambda ()
                        (p4-form-callback move-to commit-cmd success-callback
-                                         failure-callback))))))))
+                                         failure-callback mode head-text))))))))
 
 (defun p4-form-commit-failure-callback-default (cmd buffer)
   (with-current-buffer buffer
@@ -1479,7 +1487,7 @@ changelevel."
       (if (and (stringp p4-executable)
                (file-executable-p p4-executable)
                (zerop (call-process p4-executable nil t nil "help" cmd)))
-          (buffer-substring (point-min) (point-max))
+          (concat text "\n" (buffer-substring (point-min) (point-max)))
         text))))
 
 (eval-when (eval load)
@@ -1509,7 +1517,8 @@ twice in the expansion."
      ,(intern (format "p4-%s" name))
      (&optional args-orig)
      ,(format "%s" name)
-     ,help-text
+     ,(format "%s\n\nWith a prefix argument, prompt for \"p4 %s\" command-line options."
+              help-text name)
      (interactive
       (when current-prefix-arg
         (let* ((args ,args-default)
@@ -1573,10 +1582,20 @@ twice in the expansion."
 (defun p4-change-success (cmd buffer)
   (p4-change-update-form buffer "pending" "^Change \\([0-9]+\\) created\\.$"))
 
+(defvar p4-change-head-text
+  (format "# Created using Perforce-Emacs Integration version %s.
+# Type C-c C-c to update the change description on the server.
+# Type C-c C-s to submit the change to the server.
+# Type C-x k to cancel the operation.
+#\n" p4-version)
+  "Text added to top of change form.")
+
 (defp4cmd* change
   "Create or edit a changelist description."
   nil
   (p4-form-command cmd args :move-to "Description:\n\t"
+                   :mode 'p4-change-form-mode
+                   :head-text p4-change-head-text
                    :success-callback 'p4-change-success))
 
 (defp4cmd* changes
@@ -2074,6 +2093,14 @@ return a buffer listing those files. Otherwise, return NIL."
   (with-current-buffer buffer
     (p4-process-show-error "submit -i failed to complete successfully.")))
 
+(defvar p4-submit-head-text
+  (format "# Created using Perforce-Emacs Integration version %s.
+# Type C-c C-c to submit the change to the server.
+# Type C-c C-p to save the change description as a pending changelist.
+# Type C-x k to cancel the operation.
+#\n" p4-version)
+  "Text added to top of change form.")
+
 (defp4cmd p4-submit (&optional args)
   "submit"
   "Submit open files to the depot."
@@ -2094,6 +2121,8 @@ return a buffer listing those files. Otherwise, return NIL."
                  "File with empty diff opened for edit. Submit anyway? ")))
       (p4-form-command "change" args :move-to "Description:\n\t"
                        :commit-cmd "submit"
+                       :mode 'p4-change-form-mode
+                       :head-text p4-submit-head-text
                        :success-callback 'p4-submit-success
                        :failure-callback 'p4-submit-failure))))
 
@@ -3158,10 +3187,34 @@ is NIL, otherwise return NIL."
   "Keymap for P4 form mode.")
 
 (define-derived-mode p4-form-mode indented-text-mode "P4 Form"
-  "Major mode for P4 forms derived from `indented-text-mode'"
+  "Major mode for P4 forms."
   (setq fill-column 80
         indent-tabs-mode t
         font-lock-defaults '(p4-form-font-lock-keywords t)))
+
+
+;;; Change form mode::
+
+(defvar p4-change-form-mode-map
+  (let ((map (p4-make-derived-map p4-form-mode-map)))
+    (define-key map "\C-c\C-s" 'p4-change-form-submit)
+    (define-key map "\C-c\C-p" 'p4-change-form-update)
+    map)
+  "Keymap for P4 change form mode.")
+
+(define-derived-mode p4-change-form-mode indented-text-mode "P4 Change")
+
+(defun p4-change-form-submit ()
+  "Submit the change in the current buffer to the server."
+  (interactive)
+  (let ((p4-form-commit-command "submit"))
+    (p4-form-commit)))
+
+(defun p4-change-form-update ()
+  "Update the changelist description on the server."
+  (interactive)
+  (let ((p4-form-commit-command "change"))
+    (p4-form-commit)))
 
 
 ;;; Filelog mode:
