@@ -1146,7 +1146,7 @@ opposed to showing it in the echo area)."
                              (failure-callback
                               'p4-form-commit-failure-callback-default)
                              (mode 'p4-form-mode)
-                             (head-text 'p4-form-head-text))
+                             (head-text p4-form-head-text))
   "Maybe start a form-editing session.
 cmd is the p4 command to run \(it must take -o and output a form\).
 args is a list of arguments to pass to the p4 command.
