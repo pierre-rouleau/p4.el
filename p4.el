@@ -191,6 +191,18 @@ complete on all clients."
   :type '(repeat (string))
   :group 'p4)
 
+(defcustom p4-modify-args-function #'identity
+  "Function that modifies a Perforce command line argument list.
+All calls to the Perforce executable are routed through this
+function to enable global modifications of argument vectors.  The
+function will be called with one argument, the list of command
+line arguments for Perforce (excluding the program name).  It
+should return a possibly modified command line argument list.
+This can be used to e.g. support wrapper scripts taking custom
+flags."
+  :type 'function
+  :group 'p4)
+
 (defgroup p4-faces nil "Perforce VC System Faces." :group 'p4)
 
 (defface p4-description-face '((t))
@@ -519,7 +531,7 @@ the output, and evaluate BODY if the command completed successfully."
      (with-temp-buffer
        (cd dir)
        (when (zerop (save-excursion
-                      (call-process (p4-executable) nil t nil "set")))
+                      (p4-call-process nil t nil "set")))
          ,@body))))
 
 (put 'p4-with-set-output 'lisp-indent-function 0)
@@ -887,6 +899,55 @@ To set the executable for future sessions, customize
       (setq p4-executable filename)
     (error "%s is not an executable file." filename)))
 
+(defun p4-call-process (&optional infile destination display &rest args)
+  "Call Perforce synchronously in separate process.
+The program to be executed is taken from `p4-executable'; INFILE,
+DESTINATION, and DISPLAY are to be interpreted as for
+`call-process'.  The argument list ARGS is modified using
+`p4-modify-args-function'."
+  (apply #'call-process (p4-executable) infile destination display
+         (funcall p4-modify-args-function args)))
+
+(defun p4-call-process-region (start end &optional delete buffer display &rest args)
+  "Send text from START to END to a synchronous Perforce process.
+The program to be executed is taken from `p4-executable'; START,
+END, DELETE, BUFFER, and DISPLAY are to be interpreted as for
+`call-process-region'.  The argument list ARGS is modified using
+`p4-modify-args-function'."
+  (apply #'call-process-region start end (p4-executable) delete buffer display
+         (funcall p4-modify-args-function args)))
+
+(defun p4-start-process (name buffer &rest program-args)
+  "Start Perforce in a subprocess.  Return the process object for it.
+The program to be executed is taken from `p4-executable'; NAME
+and BUFFER are to be interpreted as for `start-process'.  The
+argument list PROGRAM-ARGS is modified using
+`p4-modify-args-function'."
+  (apply #'start-process name buffer (p4-executable)
+         (funcall p4-modify-args-function program-args)))
+
+(defun p4-compilation-start (args &optional mode name-function highlight-regexp)
+  "Run Perforce with arguments ARGS in a compilation buffer.
+The program to be executed is taken from `p4-executable'; MODE,
+NAME-FUNCTION, and HIGHLIGHT-REGEXP are to be interpreted as for
+`compilation-start'.  ARGS, however, is an argument vector, not a
+shell command.  It will be modified using
+`p4-modify-args-function'."
+  (apply #'compilation-start
+         (mapconcat #'shell-quote-argument
+                    (cons (p4-executable)
+                          (funcall p4-modify-args-function args))
+                    " ")
+         mode name-function highlight-regexp))
+
+(defun p4-make-comint (name &optional startfile &rest switches)
+  "Make a Comint process NAME in a buffer, running Perforce.
+The program to be executed is taken from `p4-executable';
+STARTFILE is to be interpreted as for `p4-make-comint'.  SWITCHES
+is modified using `p4-modify-args'."
+  (apply #'make-comint name (p4-executable) startfile
+         (funcall p4-modify-args-function switches)))
+
 (defun p4-make-output-buffer (buffer-name &optional mode)
   "Make a read-only buffer named BUFFER-NAME and return it.
 Run the function MODE if non-NIL, otherwise `p4-basic-mode'."
@@ -928,8 +989,8 @@ connect to the server.")
   (with-temp-buffer
     (insert "yes\n")
     (p4-with-coding-system
-      (call-process-region (point-min) (point-max)
-                           (p4-executable) t t nil "trust" "-f"))))
+      (p4-call-process-region (point-min) (point-max)
+                              t t nil "trust" "-f"))))
 
 (defun p4-iterate-with-login (fun)
   "Call FUN in the current buffer and return its result.
@@ -970,7 +1031,7 @@ re-run the command."
   (p4-iterate-with-login
    (lambda ()
      (p4-with-coding-system
-       (apply 'call-process (p4-executable) nil t nil args)))))
+       (apply #'p4-call-process nil t nil args)))))
 
 (defun p4-refresh-callback (&optional hook)
   "Return a callback function that refreshes the status of the
@@ -1068,12 +1129,12 @@ and arguments taken from the local variable `p4-process-args'."
     (erase-buffer)
     (if p4-process-synchronous
         (p4-with-coding-system
-          (let ((status (apply 'call-process (p4-executable) nil t nil
+          (let ((status (apply #'p4-call-process nil t nil
                                p4-process-args)))
             (p4-process-finished (current-buffer) "P4"
                                  (if (zerop status) "finished\n"
                                    (format "exited with status %d\n" status)))))
-      (let ((process (apply 'start-process "P4" (current-buffer) (p4-executable)
+      (let ((process (apply #'p4-start-process "P4" (current-buffer)
                             p4-process-args)))
         (set-process-query-on-exit-flag process nil)
         (set-process-sentinel process 'p4-process-sentinel)
@@ -1204,8 +1265,8 @@ standard input\). If not supplied, cmd is reused.
                    (save-restriction
                      (widen)
                      (p4-with-coding-system
-                       (apply 'call-process-region (point-min)
-                              (point-max) (p4-executable)
+                       (apply #'p4-call-process-region (point-min)
+                              (point-max)
                               nil buffer nil cmd args))))))))
            (setq mode-name "P4 Form Committed")
            (when p4-form-commit-success-callback
@@ -1321,9 +1382,8 @@ number is not known or not applicable."
           (forward-line 1))
         (erase-buffer)
         (if (and p4-executable have-buffers)
-            (let ((process (start-process "P4" (current-buffer)
-                                          p4-executable
-                                          "-s" "-x" "-" "have")))
+            (let ((process (p4-start-process "P4" (current-buffer)
+                                             "-s" "-x" "-" "have")))
               (setq p4-process-buffers have-buffers)
               (set-process-query-on-exit-flag process nil)
               (set-process-sentinel process 'p4-update-status-sentinel-2)
@@ -1359,9 +1419,8 @@ an update is running already."
           (setq default-directory
                 (with-current-buffer (car buffers)
                   (or p4-default-directory default-directory)))
-          (let ((process (start-process "P4" (current-buffer)
-                                        p4-executable
-                                        "-s" "-x" "-" "opened")))
+          (let ((process (p4-start-process "P4" (current-buffer)
+                                           "-s" "-x" "-" "opened")))
             (set-process-query-on-exit-flag process nil)
             (set-process-sentinel process 'p4-update-status-sentinel-1)
             (p4-set-process-coding-system process)
@@ -1486,7 +1545,7 @@ changelevel."
     (with-temp-buffer
       (if (and (stringp p4-executable)
                (file-executable-p p4-executable)
-               (zerop (call-process p4-executable nil t nil "help" cmd)))
+               (zerop (p4-call-process nil t nil "help" cmd)))
           (concat text "\n" (buffer-substring (point-min) (point-max)))
         text))))
 
@@ -1770,9 +1829,8 @@ continuation lines); show it in a pop-up window otherwise."
   "Print lines matching a pattern."
   (interactive (p4-read-args "p4 grep: " '("-e  ..." . 3)))
   (p4-ensure-logged-in)
-  (compilation-start
-   (mapconcat 'shell-quote-argument
-              (append (list (p4-executable) "grep" "-n") args) " ")
+  (p4-compilation-start
+   (append (list "grep" "-n") args)
    'p4-grep-mode))
 
 (defp4cmd p4-group (&rest args)
@@ -1896,8 +1954,8 @@ continuation lines); show it in a pop-up window otherwise."
               (insert (read-passwd (format prompt (p4-current-server-port))) "\n"))
           (setq first-iteration nil)
           (p4-with-coding-system
-            (apply 'call-process-region (point-min) (point-max)
-                   (p4-executable) t t nil cmd "-a" args))
+            (apply #'p4-call-process-region (point-min) (point-max)
+                   t t nil cmd "-a" args))
           (goto-char (point-min))
           (when (re-search-forward "Enter password:.*\n" nil t)
             (replace-match ""))
@@ -2002,7 +2060,7 @@ changelist."
     (setq args (cons cmd args))
     (let ((process-environment (cons "P4PAGER=" process-environment)))
       (p4-ensure-logged-in)
-      (setq buffer (apply 'make-comint "P4 resolve" (p4-executable) nil args)))
+      (setq buffer (apply #'p4-make-comint "P4 resolve" nil args)))
     (with-selected-window (display-buffer buffer)
       (goto-char (point-max)))))
 
