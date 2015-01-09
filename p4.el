@@ -191,6 +191,18 @@ complete on all clients."
   :type '(repeat (string))
   :group 'p4)
 
+(defcustom p4-modify-args-function #'identity
+  "Function that modifies a Perforce command line argument list.
+All calls to the Perforce executable are routed through this
+function to enable global modifications of argument vectors.  The
+function will be called with one argument, the list of command
+line arguments for Perforce (excluding the program name).  It
+should return a possibly modified command line argument list.
+This can be used to e.g. support wrapper scripts taking custom
+flags."
+  :type 'function
+  :group 'p4)
+
 (defgroup p4-faces nil "Perforce VC System Faces." :group 'p4)
 
 (defface p4-description-face '((t))
@@ -892,36 +904,39 @@ To set the executable for future sessions, customize
 The program to be executed is taken from `p4-executable'; INFILE,
 DESTINATION, and DISPLAY are to be interpreted as for
 `call-process'.  The argument list ARGS is modified using
-`p4-modify-args'."
+`p4-modify-args-function'."
   (apply #'call-process (p4-executable) infile destination display
-         (p4-modify-args args)))
+         (funcall p4-modify-args-function args)))
 
 (defun p4-call-process-region (start end &optional delete buffer display &rest args)
   "Send text from START to END to a synchronous Perforce process.
 The program to be executed is taken from `p4-executable'; START,
 END, DELETE, BUFFER, and DISPLAY are to be interpreted as for
 `call-process-region'.  The argument list ARGS is modified using
-`p4-modify-args'."
+`p4-modify-args-function'."
   (apply #'call-process-region start end (p4-executable) delete buffer display
-         (p4-modify-args args)))
+         (funcall p4-modify-args-function args)))
 
 (defun p4-start-process (name buffer &rest program-args)
   "Start Perforce in a subprocess.  Return the process object for it.
 The program to be executed is taken from `p4-executable'; NAME
 and BUFFER are to be interpreted as for `start-process'.  The
-argument list PROGRAM-ARGS is modified using `p4-modify-args'."
+argument list PROGRAM-ARGS is modified using
+`p4-modify-args-function'."
   (apply #'start-process name buffer (p4-executable)
-         (p4-modify-args program-args)))
+         (funcall p4-modify-args-function program-args)))
 
 (defun p4-compilation-start (args &optional mode name-function highlight-regexp)
   "Run Perforce with arguments ARGS in a compilation buffer.
 The program to be executed is taken from `p4-executable'; MODE,
 NAME-FUNCTION, and HIGHLIGHT-REGEXP are to be interpreted as for
 `compilation-start'.  ARGS, however, is an argument vector, not a
-shell command.  It will be modified using `p4-modify-args'."
+shell command.  It will be modified using
+`p4-modify-args-function'."
   (apply #'compilation-start
          (mapconcat #'shell-quote-argument
-                    (cons (p4-executable) (p4-modify-args args))
+                    (cons (p4-executable)
+                          (funcall p4-modify-args-function args))
                     " ")
          mode name-function highlight-regexp))
 
@@ -931,17 +946,7 @@ The program to be executed is taken from `p4-executable';
 STARTFILE is to be interpreted as for `p4-make-comint'.  SWITCHES
 is modified using `p4-modify-args'."
   (apply #'make-comint name (p4-executable) startfile
-         (p4-modify-args switches)))
-
-(defun p4-modify-args (args)
-  "Modifies a Perforce argument vector.
-All calls to the Perforce executable are routed through this
-function to enable global modifications of argument vectors.
-ARGS is a list of command line arguments for Perforce, excluding
-the program name.  This function normally returns ARGS without
-modifications, but it can be redefined or advised to e.g. support
-wrapper scripts taking custom flags."
-  args)
+         (funcall p4-modify-args-function switches)))
 
 (defun p4-make-output-buffer (buffer-name &optional mode)
   "Make a read-only buffer named BUFFER-NAME and return it.
