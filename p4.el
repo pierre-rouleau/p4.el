@@ -191,8 +191,10 @@ complete on all clients."
   :type '(repeat (string))
   :group 'p4)
 
-(defcustom p4-modify-args-function #'identity
-  "Function that modifies a Perforce command line argument list.
+(eval-and-compile
+  ;; This is needed at compile time by p4-help-text.
+  (defcustom p4-modify-args-function #'identity
+    "Function that modifies a Perforce command line argument list.
 All calls to the Perforce executable are routed through this
 function to enable global modifications of argument vectors.  The
 function will be called with one argument, the list of command
@@ -200,8 +202,8 @@ line arguments for Perforce (excluding the program name).  It
 should return a possibly modified command line argument list.
 This can be used to e.g. support wrapper scripts taking custom
 flags."
-  :type 'function
-  :group 'p4)
+    :type 'function
+    :group 'p4))
 
 (defgroup p4-faces nil "Perforce VC System Faces." :group 'p4)
 
@@ -884,11 +886,13 @@ except for the final newlines."
 
 ;;; Running Perforce:
 
-(defun p4-executable ()
-  "Check if `p4-executable' is NIL, and if so, prompt the user
+(eval-and-compile
+  ;; This is needed at compile time by p4-help-text.
+  (defun p4-executable ()
+    "Check if `p4-executable' is NIL, and if so, prompt the user
 for a valid `p4-executable'."
-  (interactive)
-  (or p4-executable (call-interactively 'p4-set-p4-executable)))
+    (interactive)
+    (or p4-executable (call-interactively 'p4-set-p4-executable))))
 
 (defun p4-set-p4-executable (filename)
   "Set `p4-executable' to the argument FILENAME.
@@ -899,14 +903,16 @@ To set the executable for future sessions, customize
       (setq p4-executable filename)
     (error "%s is not an executable file." filename)))
 
-(defun p4-call-process (&optional infile destination display &rest args)
-  "Call Perforce synchronously in separate process.
+(eval-and-compile
+  ;; This is needed at compile time by p4-help-text.
+  (defun p4-call-process (&optional infile destination display &rest args)
+    "Call Perforce synchronously in separate process.
 The program to be executed is taken from `p4-executable'; INFILE,
 DESTINATION, and DISPLAY are to be interpreted as for
 `call-process'.  The argument list ARGS is modified using
 `p4-modify-args-function'."
-  (apply #'call-process (p4-executable) infile destination display
-         (funcall p4-modify-args-function args)))
+    (apply #'call-process (p4-executable) infile destination display
+           (funcall p4-modify-args-function args))))
 
 (defun p4-call-process-region (start end &optional delete buffer display &rest args)
   "Send text from START to END to a synchronous Perforce process.
