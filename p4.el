@@ -3021,10 +3021,9 @@ is NIL, otherwise return NIL."
           (action
            (when (<= rev 1)
              (error "There is no earlier revision to diff."))
-           (p4-call-command "diff2"
+           (apply #'p4-diff2
             (append (p4-make-list-from-string p4-default-diff-options)
-                    (mapcar 'p4-get-file-rev (list (1- rev) rev)))
-            :mode 'p4-diff-mode :callback 'p4-activate-diff-buffer))
+                    (mapcar 'p4-get-file-rev (list (1- rev) rev)))))
           (change (apply #'p4-describe
                    (append (p4-make-list-from-string p4-default-diff-options)
                            (list (format "%d" change)))))
