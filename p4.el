@@ -2320,7 +2320,7 @@ change numbers, and make the change numbers clickable."
     (save-restriction
       (narrow-to-region start end)
       (goto-char (point-min))
-      (while (re-search-forward "^\\(job[0-9]+\\) on [0-9]+/[0-9]+/[0-9]+ by \\([^ \n]+\\)" nil t)
+      (while (re-search-forward "^\\([^ \n]+\\) on [0-9]+/[0-9]+/[0-9]+ by \\([^ \n]+\\)" nil t)
         (p4-create-active-link-group 1 `(job ,(match-string-no-properties 1))
                                      "Describe job")
         (p4-create-active-link-group 2 `(user ,(match-string-no-properties 2))
