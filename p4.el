@@ -1689,16 +1689,13 @@ twice in the expansion."
     (p4-call-command cmd args :mode 'p4-basic-list-mode
                      :callback (p4-refresh-callback))))
 
-(defun p4-describe-internal (args)
-  (p4-call-command "describe" args :mode 'p4-diff-mode
-                   :callback 'p4-activate-diff-buffer))
-
 (defp4cmd p4-describe (&rest args)
   "describe"
   "Display a changelist description."
   (interactive (p4-read-args "p4 describe: "
                              (concat p4-default-diff-options " ")))
-  (p4-describe-internal args))
+  (p4-call-command "describe" args :mode 'p4-diff-mode
+                   :callback 'p4-activate-diff-buffer))
 
 (defp4cmd* diff
   "Display diff of client file with depot file."
@@ -3028,7 +3025,7 @@ is NIL, otherwise return NIL."
             (append (p4-make-list-from-string p4-default-diff-options)
                     (mapcar 'p4-get-file-rev (list (1- rev) rev)))
             :mode 'p4-diff-mode :callback 'p4-activate-diff-buffer))
-          (change (p4-describe-internal
+          (change (apply #'p4-describe
                    (append (p4-make-list-from-string p4-default-diff-options)
                            (list (format "%d" change)))))
           (pending (p4-change (list pending)))
