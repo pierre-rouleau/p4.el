@@ -2716,7 +2716,7 @@ With optional argument GROUP, return that group from each match."
 recently generated set of completions), or NIL if there are no
 annotations.")
 
-(defun p4-completion-annotation (key)
+(defun p4-completion-annotate (key)
   "Return the completion annotation corresponding to KEY, or NIL if none."
   (when p4-completion-annotations
     (let ((annotation (gethash key p4-completion-annotations)))
@@ -2739,7 +2739,7 @@ to the matches for ANNOTATION."
   "Wrapper around completing-read."
   (let ((completion (p4-get-completion completion-type))
         (completion-extra-properties
-         '(:annotation-function p4-completion-annotation)))
+         '(:annotation-function p4-completion-annotate)))
     (completing-read prompt
                      (p4-completion-arg-completion-fn completion)
                      nil nil initial-input
