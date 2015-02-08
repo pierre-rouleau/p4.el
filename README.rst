@@ -58,10 +58,10 @@ enter any arguments to the command. For example ``C-x p e`` opens the
 current file for edit. But ``C-u C-x p e * RET`` opens all files in
 the current directory for edit.
 
-If your workflow makes heavy use of numbered pending changelists, then
-you may wish to turn on the option ``p4-open-in-changelist``, so that
-you are prompted for a pending changelist number (with ``TAB``
-completion) each time you open a file.
+Commands that prompt you for a Perforce entity name provide ``TAB``
+completion on the available entity names. (“Entities” include
+branches, pending changelists, clients, filespecs, groups, jobs,
+labels, and users.)
 
 These are the most useful commands:
 
@@ -114,10 +114,10 @@ example::
     (setq p4-executable "/usr/bin/my-p4-wrapper"
           p4-modify-args-function #'modify-args-for-my-p4-wrapper)
 
-Commands that prompt you for a Perforce entity name provide ``TAB``
-completion on the available entity names. (“Entities” include
-branches, pending changelists, clients, filespecs, groups, jobs,
-labels, and users.)
+If your workflow makes heavy use of numbered pending changelists, then
+you may wish to turn on the option ``p4-open-in-changelist``, so that
+you are prompted for a pending changelist number (with ``TAB``
+completion) each time you open a file.
 
 
 Keychain access
