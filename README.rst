@@ -6,7 +6,7 @@ Perforce/Emacs integration
 
 Introduction
 ------------
-**p4.el** integrates the `Perforce`_ software version management system into `GNU Emacs`_. It provides Emacs interfaces that map directly to Perforce commands, and so is most useful if you are already familiar with Perforce and want to access it from Emacs. (If, on the other hand, you are already familiar with the Emacs `VC`_ interface, and want to add Perforce as a VC backend, then you might look at Jonathan Kamens' `VC-P4`_.)
+**p4.el** integrates the `Perforce`_ software version management system into `GNU Emacs`_. It provides Emacs interfaces that map directly to Perforce commands, and so is most useful if you are already familiar with Perforce and want to access it from Emacs. (If, on the other hand, you are already familiar with the Emacs `VC`_ interface, and want to add Perforce as a VC backend, then you might look at Jonathan Kamens’ `VC-P4`_.)
 
 .. _Perforce: http://www.perforce.com/
 .. _GNU Emacs: http://www.gnu.org/software/emacs/
@@ -41,7 +41,7 @@ strings for each command, you must byte-compile ``p4.el``::
 Use
 ---
 *Note:* This section assumes that you are using the default key
-prefix, ``C-x p``. If you've customized ``p4-global-key-prefix``, then
+prefix, ``C-x p``. If you’ve customized ``p4-global-key-prefix``, then
 change the key sequences accordingly.
 
 ``p4.el`` provides an Emacs command for nearly all Perforce commands,
@@ -50,8 +50,8 @@ edit`` corresponds to the Emacs command ``p4-edit``. You can type
 ``C-x p C-h`` to see a list of all key bindings (but not every
 Perforce command has a key binding).
 
-Commands in ``p4.el`` operate on the "current" file by default -- this
-is the file you're visiting in the current buffer, if any; the marked
+Commands in ``p4.el`` operate on the “current” file by default -- this
+is the file you’re visiting in the current buffer, if any; the marked
 file(s) in a Dired buffer, if any; or the file on the current line in
 a Dired buffer. But if they are given a prefix argument then you can
 enter any arguments to the command. For example ``C-x p e`` opens the
@@ -71,7 +71,7 @@ Perforce command  Key sequence  Description
 ``delete``        ``C-x p x``   Open file for delete.
 ``diff``          ``C-x p =``   Diff local file against the depot.
 ``filelog``       ``C-x p f``   Show revision history of file.
-``move``          ``C-x p m``   Move (rename) a file that's open for edit.
+``move``          ``C-x p m``   Move (rename) a file that’s open for edit.
 ``opened``        ``C-x p o``   List open files.
 ``reconcile``     ``C-x p z``   Reconcile client with workspace changes.
 ``revert``        ``C-x p r``   Revert file, discarding local changes.
@@ -91,7 +91,7 @@ Customization
 
 Type ``M-x customize-group RET p4 RET`` to see all the options. The
 most important options are ``p4-executable`` (the location of the
-Perforce client executable, in case it can't be found on your
+Perforce client executable, in case it can’t be found on your
 ``PATH``), and ``p4-global-key-prefix`` (the prefix for all Perforce
 key bindings, in case the default ``C-x p`` is unsuitable).
 
@@ -112,15 +112,15 @@ Keychain access
 The user setting ``p4-password-source`` tells ``p4.el`` what to do
 when Perforce requires a password. By default it prompts you for a
 password, but it can be configured to fetch your password from your
-system's password manager.
+system’s password manager.
 
 #. On OS X, ``p4.el`` can automatically fetch your Perforce passwords
    from the login keychain. For each Perforce account, use Keychain
-   Access to create an application password where the "Account" is the
-   Perforce user name (``P4USER``) and "Where" is the Perforce server
+   Access to create an application password where the “Account” is the
+   Perforce user name (``P4USER``) and “Where” is the Perforce server
    setting (``P4PORT``). Then in Emacs, customize the user setting
-   ``p4-password-source`` and select "Fetch password from OS X
-   Keychain."
+   ``p4-password-source`` and select “Fetch password from OS X
+   Keychain.”
 
 #. If your system is supported by the keyring_ Python module, then
    install that module (it is installed by default on Ubuntu) and for
@@ -132,20 +132,20 @@ system's password manager.
    replacing ``P4PORT`` with the Perforce server setting, ``P4USER``
    with the Perforce user name, and ``PASSWORD`` with the password.
    Then in Emacs, customize the user setting ``p4-password-source``
-   and select "Fetch password from Python keyring."
+   and select “Fetch password from Python keyring.”
 
 .. _keyring: https://pypi.python.org/pypi/keyring
 
 
-What's new
+What’s new
 ----------
 
-If you've been using the `old Emacs-P4`_ from SourceForge, then here
+If you’ve been using the `old Emacs-P4`_ from SourceForge, then here
 are the significant new and improved features in this version:
 
 .. _old Emacs-P4: http://p4el.sourceforge.net/
 
-- The "mode check", and most user commands, run Perforce in the
+- The “mode check”, and most user commands, run Perforce in the
   background, so that Emacs does not hang when the Perforce server is
   unavailable or when operations take a long time. You can control
   which commands get run in the background and which get run in the
@@ -165,7 +165,7 @@ are the significant new and improved features in this version:
   and ``update``.
 - The ``p4-blame`` command makes use of ``p4 annotate`` if your server
   supports it, and so is much faster. The annotation also includes a
-  snippet from the change description if there's space.
+  snippet from the change description if there’s space.
 - Diffs are opened in diff-mode, and you can jump from a line in a
   hunk to the corresponding line in the source.
 - Support for Unicode characters. (If the Perforce server is not
@@ -174,7 +174,7 @@ are the significant new and improved features in this version:
 
 These features have been removed:
 
-- The "notify" feature: superseded by the Perforce review daemon.
+- The “notify” feature: superseded by the Perforce review daemon.
 - ``p4-colorized-diffs``: superseded by ``global-font-lock-mode``.
 
 
