@@ -58,6 +58,11 @@ enter any arguments to the command. For example ``C-x p e`` opens the
 current file for edit. But ``C-u C-x p e * RET`` opens all files in
 the current directory for edit.
 
+If your workflow makes heavy use of numbered pending changelists, then
+you may wish to turn on the option ``p4-open-in-changelist``, so that
+you are prompted for a pending changelist number (with ``TAB``
+completion) each time you open a file.
+
 These are the most useful commands:
 
 ================  ============  ===========================================
@@ -83,7 +88,11 @@ Perforce command  Key sequence  Description
 
 Commands like ``submit`` and ``client`` open a form for editing in
 Emacs. When done, submit the form to the Perforce server by typing
-``C-c C-c``.
+``C-c C-c``. In the special case of a ``submit`` form, you can change
+your mind and type ``C-c C-p`` to save the change description as a
+pending changelist (instead of submitting it); in the special case of
+a ``change`` form, you can change your mind and type ``C-c C-s`` to
+submit the change (instead of saving it).
 
 
 Customization
@@ -104,6 +113,11 @@ example::
       (cons "--my-wrapper-option" args))
     (setq p4-executable "/usr/bin/my-p4-wrapper"
           p4-modify-args-function #'modify-args-for-my-p4-wrapper)
+
+Commands that prompt you for a Perforce entity name provide ``TAB``
+completion on the available entity names. (“Entities” include
+branches, pending changelists, clients, filespecs, groups, jobs,
+labels, and users.)
 
 
 Keychain access

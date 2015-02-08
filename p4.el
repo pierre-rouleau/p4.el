@@ -1522,6 +1522,19 @@ following, in order, until one succeeds:
       (let ((f (p4-context-single-filename)))
         (when f (list f))))))
 
+(defcustom p4-open-in-changelist nil
+  "If non-NIL, prompt for a numbered pending changelist when opening files."
+  :type 'boolean
+  :group 'p4)
+
+(defun p4-context-filenames-and-maybe-change ()
+  "Return a list of filenames based on the current context,
+preceded by \"-c\" and a changelist number if the user setting
+p4-open-in-changelist is non-NIL."
+  (append (and p4-open-in-changelist
+              (list "-c" (p4-completing-read 'change "Change: ")))
+          (p4-context-filenames-list)))
+
 (defun p4-context-single-filename-args ()
   "Return an argument list consisting of a single filename based
 on the current context, or NIL if no filename can be found in the
@@ -1598,7 +1611,7 @@ twice in the expansion."
 
 (defp4cmd* add
   "Open a new file to add it to the depot."
-  (p4-context-filenames-list)
+  (p4-context-filenames-and-maybe-change)
   (p4-call-command cmd args :mode 'p4-basic-list-mode
                    :callback (p4-refresh-callback)))
 
@@ -1685,7 +1698,7 @@ twice in the expansion."
 
 (defp4cmd* delete
   "Open an existing file for deletion from the depot."
-  (p4-context-filenames-list)
+  (p4-context-filenames-and-maybe-change)
   (when (yes-or-no-p "Really delete from depot? ")
     (p4-call-command cmd args :mode 'p4-basic-list-mode
                      :callback (p4-refresh-callback))))
@@ -1790,7 +1803,7 @@ continuation lines); show it in a pop-up window otherwise."
 
 (defp4cmd* edit
   "Open an existing file for edit."
-  (p4-context-filenames-list)
+  (p4-context-filenames-and-maybe-change)
   (p4-call-command cmd args
                    :mode 'p4-basic-list-mode
                    :pop-up-output 'p4-edit-pop-up-output-p
@@ -2736,8 +2749,10 @@ to the matches for ANNOTATION."
   "Fetch pending change completions for STRING from the depot."
   (let ((client (p4-current-client)))
     (when client
-      (p4-output-annotations `("changes" "-s" "pending" "-c" ,client)
-                             "^Change \\([1-9][0-9]*\\) .*'\\(.*\\)'" 1 2))))
+      (cons "default"
+            (p4-output-annotations `("changes" "-s" "pending" "-c" ,client)
+                                   "^Change \\([1-9][0-9]*\\) .*'\\(.*\\)'"
+                                   1 2)))))
 
 (defun p4-fetch-filespec-completions (completion string)
   "Fetch file and directory completions for STRING from the depot."
