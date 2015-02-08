@@ -1655,9 +1655,10 @@ twice in the expansion."
 #\n" p4-version)
   "Text added to top of change form.")
 
-(defp4cmd* change
+(defp4cmd p4-change (&rest args)
+  "change"
   "Create or edit a changelist description."
-  nil
+  (interactive (p4-read-args* "p4 change: " "" 'change))
   (p4-form-command cmd args :move-to "Description:\n\t"
                    :mode 'p4-change-form-mode
                    :head-text p4-change-head-text
@@ -2673,6 +2674,8 @@ only be used when p4 annotate is unavailable."
   query-arg            ; p4 command argument to put before the query string.
   query-prefix         ; string to prepend to the query string.
   regexp               ; regular expression matching results in p4 output.
+  group                ; group in regexp containing the completion (default 1).
+  annotation           ; group in regexp containing the annotation.
   fetch-completions-fn ; function to fetch completions from the depot.
   completion-fn        ; function to do the completion.
   arg-completion-fn)   ; function to do completion in arg list context.
@@ -2686,12 +2689,55 @@ With optional argument GROUP, return that group from each match."
         (push (match-string (or group 0)) result))
       (nreverse result))))
 
+;; Completions are generated as needed in completing-read, but there's
+;; no way for the completion function to return the annotations as
+;; well as completions. We don't want to query the depot for each
+;; annotation (that would be disastrous for performance). So the only
+;; way annotations can work at all efficiently is for the function
+;; that gets the list of completions (p4-complete) to also update this
+;; global variable (either by calling p4-output-annotations, or by
+;; getting the annotation table out of the cache).
+
+(defvar p4-completion-annotations nil
+  "Hash table mapping completion to its annotation (for the most
+recently generated set of completions), or NIL if there are no
+annotations.")
+
+(defun p4-completion-annotation (key)
+  "Return the completion annotation corresponding to KEY, or NIL if none."
+  (when p4-completion-annotations
+    (let ((annotation (gethash key p4-completion-annotations)))
+      (when annotation (concat " " annotation)))))
+
+(defun p4-output-annotations (args regexp group annotation)
+  "As p4-output-matches, but additionally update
+p4-completion-annotations so that it maps the matches for GROUP
+to the matches for ANNOTATION."
+  (p4-with-temp-buffer args
+    (let (result (ht (make-hash-table :test #'equal)))
+      (while (re-search-forward regexp nil t)
+        (let ((key (match-string group)))
+          (push key result)
+          (puthash key (match-string annotation) ht)))
+      (setq p4-completion-annotations ht)
+      (nreverse result))))
+
+(defun p4-completing-read (completion-type prompt &optional initial-input)
+  "Wrapper around completing-read."
+  (let ((completion (p4-get-completion completion-type))
+        (completion-extra-properties
+         '(:annotation-function p4-completion-annotation)))
+    (completing-read prompt
+                     (p4-completion-arg-completion-fn completion)
+                     nil nil initial-input
+                     (p4-completion-history completion))))
+
 (defun p4-fetch-change-completions (completion string)
   "Fetch pending change completions for STRING from the depot."
   (let ((client (p4-current-client)))
     (when client
-      (p4-output-matches `("changes" "-s" "pending" "-c" ,client)
-                         "^Change \\([1-9][0-9]*\\)" 1))))
+      (p4-output-annotations `("changes" "-s" "pending" "-c" ,client)
+                             "^Change \\([1-9][0-9]*\\) .*'\\(.*\\)'" 1 2))))
 
 (defun p4-fetch-filespec-completions (completion string)
   "Fetch file and directory completions for STRING from the depot."
@@ -2712,17 +2758,22 @@ With optional argument GROUP, return that group from each match."
 
 (defun p4-fetch-completions (completion string)
   "Fetch possible completions for STRING from the depot and
-return them as a list."
+return them as a list. Also, update the p4-completion-annotations
+hash table."
   (let* ((cmd (p4-completion-query-cmd completion))
          (arg (p4-completion-query-arg completion))
          (prefix (p4-completion-query-prefix completion))
          (regexp (p4-completion-regexp completion))
+         (group (or (p4-completion-group completion) 1))
+         (annotation (p4-completion-annotation completion))
          (have-string (> (length string) 0))
          (args (append (if (listp cmd) cmd (list cmd))
                        (and arg have-string (list arg))
                        (and (or arg prefix) have-string
                             (list (concat prefix string "*"))))))
-    (p4-output-matches args regexp 1)))
+    (if annotation
+        (p4-output-annotations args regexp group annotation)
+      (p4-output-matches args regexp group))))
 
 (defun p4-purge-completion-cache (completion)
   "Remove stale entries from the cache for COMPLETION."
@@ -2735,16 +2786,20 @@ return them as a list."
 
 (defun p4-complete (completion string)
   "Return list of items of type COMPLETION that are possible
-completions for STRING. Use the cache if available, otherwise
-fetch them from the depot and update the cache accordingly."
+completions for STRING, and update the annotations hash table.
+Use the cache if available, otherwise fetch them from the depot
+and update the cache accordingly."
   (p4-purge-completion-cache completion)
   (let* ((cache (p4-completion-cache completion))
          (cached (assoc string cache)))
     ;; Exact cache hit?
-    (if cached (cddr cached)
+    (if cached
+        (progn
+          (setq p4-completion-annotations (fourth cached))
+          (third cached))
       ;; Any hit on a prefix (unless :cache-exact)
       (or (and (not (p4-completion-cache-exact completion))
-               (loop for (query timestamp . results) in cache
+               (loop for (query timestamp results annotations) in cache
                      for best-results = nil
                      for best-length = -1
                      for l = (length query)
@@ -2756,7 +2811,7 @@ fetch them from the depot and update the cache accordingly."
                                'p4-fetch-completions))
                  (results (funcall fetch-fn completion string))
                  (timestamp (current-time)))
-            (push (cons string (cons timestamp results))
+            (push (list string timestamp results p4-completion-annotations)
                   (p4-completion-cache completion))
             results)))))
 
@@ -2822,7 +2877,8 @@ fetch them from the depot and update the cache accordingly."
                     :history 'p4-help-history))
    (cons 'job      (p4-make-completion
                     :query-cmd "jobs" :query-arg "-e" :query-prefix "job="
-                    :regexp "\\([^ \n]*\\) on [0-9]+/"
+                    :regexp "\\([^ \n]*\\) on [0-9]+/.*\\* '\\(.*\\)'"
+                    :annotation 2
                     :history 'p4-job-history))
    (cons 'label    (p4-make-completion
                     :query-cmd "labels" :query-arg "-E"
@@ -2853,16 +2909,13 @@ is NIL, otherwise return NIL."
     (when completion (setf (p4-completion-cache completion) nil))))
 
 (defun p4-read-arg-string (prompt &optional initial-input completion-type)
-  (let* ((completion (and completion-type (p4-get-completion completion-type)))
-         (completion-fn (if completion-type
-                            (p4-completion-arg-completion-fn completion)
-                          'p4-arg-string-completion))
-         (history (if completion-type (p4-completion-history completion)
-                    'p4-arg-string-history))
-         (minibuffer-local-completion-map
+  (let* ((minibuffer-local-completion-map
           (copy-keymap minibuffer-local-completion-map)))
     (define-key minibuffer-local-completion-map " " 'self-insert-command)
-    (completing-read prompt completion-fn nil nil initial-input history)))
+    (if completion-type
+        (p4-completing-read completion-type prompt initial-input)
+      (completing-read prompt #'p4-arg-string-completion nil nil
+                       initial-input 'p4-arg-string-history))))
 
 (defun p4-read-args (prompt &optional initial-input completion-type)
   (p4-make-list-from-string
@@ -3196,10 +3249,7 @@ is NIL, otherwise return NIL."
 
 (defun p4-opened-list-change (change)
   (interactive 
-   (let ((completion (p4-get-completion 'change)))
-     (list (completing-read "New change: "
-                            (p4-completion-arg-completion-fn completion)
-                            nil nil "" (p4-completion-history completion)))))
+   (list (p4-completing-read 'change "New change: ")))
   (save-excursion
     (beginning-of-line)
     (when (looking-at p4-basic-list-filename-regexp)
