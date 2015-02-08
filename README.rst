@@ -95,14 +95,15 @@ Perforce client executable, in case it can't be found on your
 ``PATH``), and ``p4-global-key-prefix`` (the prefix for all Perforce
 key bindings, in case the default ``C-x p`` is unsuitable).
 
-If you run Perforce through a wrapper script or want to modify the command line
-arguments passed to ``p4`` in some other way, you can use the low-level
-``p4-modify-args-function`` customization option.  For example::
+If you run Perforce through a wrapper script or want to modify the
+command line arguments passed to ``p4`` in some other way, you can use
+the low-level ``p4-modify-args-function`` customization option. For
+example::
 
-  (defun modify-args-for-my-p4-wrapper (args)
-    (cons "--my-wrapper-option" args))
-  (setq p4-executable "/usr/bin/my-p4-wrapper"
-        p4-modify-args-function #'modify-args-for-my-p4-wrapper)
+    (defun modify-args-for-my-p4-wrapper (args)
+      (cons "--my-wrapper-option" args))
+    (setq p4-executable "/usr/bin/my-p4-wrapper"
+          p4-modify-args-function #'modify-args-for-my-p4-wrapper)
 
 
 Keychain access
