@@ -1672,7 +1672,7 @@ twice in the expansion."
   "change"
   "Create or edit a changelist description."
   (interactive (p4-read-args* "p4 change: " "" 'change))
-  (p4-form-command cmd args :move-to "Description:\n\t"
+  (p4-form-command "change" args :move-to "Description:\n\t"
                    :mode 'p4-change-form-mode
                    :head-text p4-change-head-text
                    :success-callback 'p4-change-success))
