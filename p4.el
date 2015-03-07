@@ -1527,12 +1527,12 @@ following, in order, until one succeeds:
   :type 'boolean
   :group 'p4)
 
-(defun p4-context-filenames-and-maybe-change ()
+(defun p4-context-filenames-and-maybe-pending ()
   "Return a list of filenames based on the current context,
 preceded by \"-c\" and a changelist number if the user setting
 p4-open-in-changelist is non-NIL."
   (append (and p4-open-in-changelist
-              (list "-c" (p4-completing-read 'change "Change: ")))
+              (list "-c" (p4-completing-read 'pending "Open in change: ")))
           (p4-context-filenames-list)))
 
 (defun p4-context-single-filename-args ()
@@ -1611,7 +1611,7 @@ twice in the expansion."
 
 (defp4cmd* add
   "Open a new file to add it to the depot."
-  (p4-context-filenames-and-maybe-change)
+  (p4-context-filenames-and-maybe-pending)
   (p4-call-command cmd args :mode 'p4-basic-list-mode
                    :callback (p4-refresh-callback)))
 
@@ -1671,7 +1671,7 @@ twice in the expansion."
 (defp4cmd p4-change (&rest args)
   "change"
   "Create or edit a changelist description."
-  (interactive (p4-read-args* "p4 change: " "" 'change))
+  (interactive (p4-read-args* "p4 change: " "" 'pending))
   (p4-form-command "change" args :move-to "Description:\n\t"
                    :mode 'p4-change-form-mode
                    :head-text p4-change-head-text
@@ -1698,7 +1698,7 @@ twice in the expansion."
 
 (defp4cmd* delete
   "Open an existing file for deletion from the depot."
-  (p4-context-filenames-and-maybe-change)
+  (p4-context-filenames-and-maybe-pending)
   (when (yes-or-no-p "Really delete from depot? ")
     (p4-call-command cmd args :mode 'p4-basic-list-mode
                      :callback (p4-refresh-callback))))
@@ -1803,7 +1803,7 @@ continuation lines); show it in a pop-up window otherwise."
 
 (defp4cmd* edit
   "Open an existing file for edit."
-  (p4-context-filenames-and-maybe-change)
+  (p4-context-filenames-and-maybe-pending)
   (p4-call-command cmd args
                    :mode 'p4-basic-list-mode
                    :pop-up-output 'p4-edit-pop-up-output-p
@@ -2131,7 +2131,7 @@ changelist."
    (cond ((integerp current-prefix-arg)
           (list (format "%d" current-prefix-arg)))
          (current-prefix-arg
-          (list (p4-read-args "p4 shelve: " "" 'change)))))
+          (list (p4-read-args "p4 shelve: " "" 'pending)))))
   (save-some-buffers nil (lambda () (or (not p4-do-find-file) p4-vc-status)))
   (p4-form-command "change" args :move-to "Description:\n\t"
                    :commit-cmd "shelve"
@@ -2183,7 +2183,7 @@ return a buffer listing those files. Otherwise, return NIL."
    (cond ((integerp current-prefix-arg)
           (list (format "%d" current-prefix-arg)))
          (current-prefix-arg
-          (list (p4-read-args "p4 change: " "" 'change)))))
+          (list (p4-read-args "p4 change: " "" 'pending)))))
   (p4-with-temp-buffer (list "-s" "opened")
     (unless (re-search-forward "^info: " nil t)
       (error "Files not opened on this client.")))
@@ -2222,7 +2222,12 @@ return a buffer listing those files. Otherwise, return NIL."
 (defp4cmd p4-unshelve (&rest args)
   "unshelve"
   "Restore shelved files from a pending change into a workspace."
-  (interactive (p4-read-args "p4 unshelve: " ""))
+  (interactive
+   (if current-prefix-arg
+       (p4-read-args "p4 unshelve: " "" 'shelved)
+     (append (list "-s" (p4-completing-read 'shelved "Unshelve from: "))
+             (when p4-open-in-changelist
+               (list "-c" (p4-completing-read 'pending "Open in change: "))))))
   (p4-call-command "unshelve" args :mode 'p4-basic-list-mode))
 
 (defp4cmd* update
@@ -2745,14 +2750,23 @@ to the matches for ANNOTATION."
                      nil nil initial-input
                      (p4-completion-history completion))))
 
-(defun p4-fetch-change-completions (completion string)
-  "Fetch pending change completions for STRING from the depot."
+(defun p4-fetch-change-completions (completion string status)
+  "Fetch change completions (with status STATUS) for STRING from
+the depot."
   (let ((client (p4-current-client)))
     (when client
       (cons "default"
-            (p4-output-annotations `("changes" "-s" "pending" "-c" ,client)
+            (p4-output-annotations `("changes" "-s" ,status "-c" ,client)
                                    "^Change \\([1-9][0-9]*\\) .*'\\(.*\\)'"
                                    1 2)))))
+
+(defun p4-fetch-pending-completions (completion string)
+  "Fetch pending change completions for STRING from the depot."
+  (p4-fetch-change-completions completion string "pending"))
+
+(defun p4-fetch-shelved-completions (completion string)
+  "Fetch shelved change completions for STRING from the depot."
+  (p4-fetch-change-completions completion string "shelved"))
 
 (defun p4-fetch-filespec-completions (completion string)
   "Fetch file and directory completions for STRING from the depot."
@@ -2857,13 +2871,14 @@ and update the cache accordingly."
 
 (defvar p4-arg-string-history nil "P4 command-line argument history.")
 (defvar p4-branch-history nil "P4 branch history.")
-(defvar p4-change-history nil "P4 change history.")
 (defvar p4-client-history nil "P4 client history.")
 (defvar p4-filespec-history nil "P4 filespec history.")
 (defvar p4-group-history nil "P4 group history.")
 (defvar p4-help-history nil "P4 help history.")
 (defvar p4-job-history nil "P4 job history.")
 (defvar p4-label-history nil "P4 label history.")
+(defvar p4-pending-history nil "P4 pending change history.")
+(defvar p4-shelved-history nil "P4 shelved change history.")
 (defvar p4-user-history nil "P4 user history.")
 
 (defvar p4-all-completions
@@ -2872,9 +2887,6 @@ and update the cache accordingly."
                     :query-cmd "branches" :query-arg "-E"
                     :regexp "^Branch \\([^ \n]*\\) [0-9]+/"
                     :history 'p4-branch-history))
-   (cons 'change   (p4-make-completion
-                    :fetch-completions-fn 'p4-fetch-change-completions
-                    :history 'p4-change-history))
    (cons 'client   (p4-make-completion
                     :query-cmd "clients" :query-arg "-E"
                     :regexp "^Client \\([^ \n]*\\) [0-9]+/"
@@ -2899,6 +2911,12 @@ and update the cache accordingly."
                     :query-cmd "labels" :query-arg "-E"
                     :regexp "^Label \\([^ \n]*\\) [0-9]+/"
                     :history 'p4-label-history))
+   (cons 'pending  (p4-make-completion
+                    :fetch-completions-fn 'p4-fetch-pending-completions
+                    :history 'p4-pending-history))
+   (cons 'shelved  (p4-make-completion
+                    :fetch-completions-fn 'p4-fetch-shelved-completions
+                    :history 'p4-shelved-history))
    (cons 'user     (p4-make-completion
                     :query-cmd "users" :query-prefix ""
                     :regexp "^\\([^ \n]+\\)"
