@@ -2159,7 +2159,7 @@ return a buffer listing those files. Otherwise, return NIL."
           (current-buffer))))))
 
 (defun p4-submit-success (cmd buffer)
-  (p4-change-update-form buffer "submitted" "^Change \\([0-9]+\\) submitted\\.$")
+  (p4-change-update-form buffer "submitted" "^Change \\(?:[0-9]+ renamed change \\)?\\([0-9]+\\)\\(?: and\\)? submitted\\.$")
   (p4-refresh-buffers))
 
 (defun p4-submit-failure (cmd buffer)
