@@ -1828,7 +1828,7 @@ continuation lines); show it in a pop-up window otherwise."
 (defp4cmd* fixes
   "List jobs with fixes and the changelists that fix them."
   nil
-  (p4-call-command cmd args))
+  (p4-call-command cmd args :callback 'p4-activate-fixes-buffer))
 
 (defp4cmd* flush
   "Synchronize the client with its view of the depot (without copying files)."
@@ -2468,6 +2468,16 @@ argument DELETE-FILESPEC is non-NIL, remove the first line."
                                    "Describe user")
       (p4-create-active-link-group 2 `(client ,(match-string-no-properties 2))
                                    "Describe client"))))
+
+(defun p4-activate-fixes-buffer ()
+  (let ((inhibit-read-only t))
+    (save-excursion
+      (goto-char (point-min))
+      (while (re-search-forward "^\\(\\S-+\\) fixed by change \\([0-9]+\\) on [0-9/]+ by \\([^ @]+\\)@\\([^ \n]+\\)" nil t)
+        (p4-create-active-link-group 1 `(job ,(match-string-no-properties 1)))
+        (p4-create-active-link-group 2 `(change ,(string-to-number (match-string 2))))
+        (p4-create-active-link-group 3 `(user ,(match-string-no-properties 3)))
+        (p4-create-active-link-group 4 `(client ,(match-string-no-properties 4)))))))
 
 (defun p4-regexp-create-links (regexp property &optional help-echo)
   (let ((inhibit-read-only t))
