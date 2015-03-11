@@ -2153,7 +2153,7 @@ return a buffer listing those files. Otherwise, return NIL."
         ;; "File(s) not opened on this client." if no files opened at all.
         ;; "File(s) not opened for edit." if files opened (but none for edit)
         ;; Nothing if files opened for edit (but all have changes).
-        ;; List of filesnames (otherwise).
+        ;; List of filenames (otherwise).
         (if (or (eobp) (looking-at "File(s) not opened"))
             (progn (kill-buffer (current-buffer)) nil)
           (current-buffer))))))
