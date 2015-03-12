@@ -3123,7 +3123,7 @@ is NIL, otherwise return NIL."
           (change (apply #'p4-describe
                    (append (p4-make-list-from-string p4-default-diff-options)
                            (list (format "%d" change)))))
-          (pending (p4-change (list pending)))
+          (pending (p4-change pending))
           (user (p4-user user))
           (group (p4-group group))
           (client (p4-client client))
