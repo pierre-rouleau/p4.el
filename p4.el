@@ -1828,7 +1828,8 @@ continuation lines); show it in a pop-up window otherwise."
 (defp4cmd* fixes
   "List jobs with fixes and the changelists that fix them."
   nil
-  (p4-call-command cmd args :callback 'p4-activate-fixes-buffer))
+  (p4-call-command cmd args :callback 'p4-activate-fixes-buffer
+                   :pop-up-output (lambda () t)))
 
 (defp4cmd* flush
   "Synchronize the client with its view of the depot (without copying files)."
@@ -1908,11 +1909,21 @@ continuation lines); show it in a pop-up window otherwise."
             (rename-buffer (p4-process-buffer-name (list "job" "-o" job)))
             (set-buffer-modified-p nil)))))))
 
+(defvar p4-job-head-text
+  (format "# Created using Perforce-Emacs Integration version %s.
+# Type C-c C-c to update the job description on the server.
+# Type C-c C-f to show the fixes associated with this job.
+# Type C-x k to cancel the operation.
+#\n" p4-version)
+  "Text added to top of job form.")
+
 (defp4cmd p4-job (&rest args)
   "job"
   "Create or edit a job (defect) specification."
   (interactive (p4-read-args* "p4 job: " "" 'job))
   (p4-form-command "job" args :move-to "Description:\n\t"
+                   :mode 'p4-job-form-mode
+                   :head-text p4-job-head-text
                    :success-callback 'p4-job-success))
 
 (defp4cmd* jobs
@@ -3355,7 +3366,7 @@ is NIL, otherwise return NIL."
     map)
   "Keymap for P4 change form mode.")
 
-(define-derived-mode p4-change-form-mode indented-text-mode "P4 Change")
+(define-derived-mode p4-change-form-mode p4-form-mode "P4 Change")
 
 (defun p4-change-form-submit ()
   "Submit the change in the current buffer to the server."
@@ -3368,6 +3379,27 @@ is NIL, otherwise return NIL."
   (interactive)
   (let ((p4-form-commit-command "change"))
     (p4-form-commit)))
+
+
+;;; Job form mode::
+
+(defvar p4-job-form-mode-map
+  (let ((map (p4-make-derived-map p4-form-mode-map)))
+    (define-key map "\C-c\C-f" 'p4-job-form-fixes)
+    map)
+  "Keymap for P4 job form mode.")
+
+(define-derived-mode p4-job-form-mode p4-form-mode "P4 Job")
+
+(defun p4-job-form-fixes ()
+  "Show the fixes for this job."
+  (interactive)
+  (save-excursion
+    (goto-char (point-min))
+    (when (re-search-forward "Job:\\s-+\\(\\S-+\\)$" nil t)
+      (let ((job (match-string 1)))
+        (unless (string= job "new")
+          (p4-fixes (list "-j" job)))))))
 
 
 ;;; Filelog mode:
