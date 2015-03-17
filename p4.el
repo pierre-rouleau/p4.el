@@ -2048,7 +2048,7 @@ followed by \"delete\"."
   nil
   (p4-call-command cmd args :mode 'p4-opened-list-mode
    :callback (lambda ()
-               (p4-regexp-create-links "\\<change \\([1-9][0-9]*\\) ([a-z]+)\n"
+               (p4-regexp-create-links "\\<change \\([1-9][0-9]*\\) ([a-z]+)"
                                        'pending "Edit change"))
    :pop-up-output (lambda () t)))
 
@@ -3304,7 +3304,7 @@ is NIL, otherwise return NIL."
 
 (defvar p4-opened-list-font-lock-keywords
   (append p4-basic-list-font-lock-keywords
-          '(("\\<change \\([1-9][0-9]*\\) ([a-z]+)$" 1 'p4-change-face))))
+          '(("\\<change \\([1-9][0-9]*\\) ([a-z]+)" 1 'p4-change-face))))
 
 (define-derived-mode p4-opened-list-mode p4-basic-list-mode "P4 Opened List"
   (setq font-lock-defaults '(p4-opened-list-font-lock-keywords t)))
