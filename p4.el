@@ -1189,6 +1189,19 @@ opposed to showing it in the echo area)."
 
 ;;; Form commands:
 
+(defun p4-form-value (key)
+  "Return the value in the current form corresponding to key, or
+NIL if the form has no value for that key."
+  (save-excursion
+    (goto-char (point-min))
+    (when (re-search-forward (format "^%s:" (regexp-quote key)) nil t)
+      (if (looking-at "[ \t]\\(.+\\)")
+          (match-string-no-properties 1)
+        (forward-line 1)
+        (loop while (looking-at "[ \t]\\(.*\\(?:\n\\|\\'\\)\\)")
+              do (forward-line 1)
+              concat (match-string-no-properties 1))))))
+
 (defun p4-form-callback (regexp cmd success-callback failure-callback
                                 mode head-text)
   (goto-char (point-min))
@@ -1665,6 +1678,7 @@ twice in the expansion."
   (format "# Created using Perforce-Emacs Integration version %s.
 # Type C-c C-c to update the change description on the server.
 # Type C-c C-s to submit the change to the server.
+# Type C-c C-d to delete the change.
 # Type C-x k to cancel the operation.
 #\n" p4-version)
   "Text added to top of change form.")
@@ -3364,10 +3378,21 @@ is NIL, otherwise return NIL."
   (let ((map (p4-make-derived-map p4-form-mode-map)))
     (define-key map "\C-c\C-s" 'p4-change-form-submit)
     (define-key map "\C-c\C-p" 'p4-change-form-update)
+    (define-key map "\C-c\C-d" 'p4-change-form-delete)
     map)
   "Keymap for P4 change form mode.")
 
 (define-derived-mode p4-change-form-mode p4-form-mode "P4 Change")
+
+(defun p4-change-form-delete ()
+  "Delete the change in the current buffer."
+  (interactive)
+  (let ((change (p4-form-value "Change")))
+    (when (and change (not (string= change "new"))
+               (yes-or-no-p "Really delete this change? "))
+      (p4-change "-d" change)
+      (p4-partial-cache-cleanup 'pending)
+      (p4-partial-cache-cleanup 'shelved))))
 
 (defun p4-change-form-submit ()
   "Submit the change in the current buffer to the server."
@@ -3395,12 +3420,9 @@ is NIL, otherwise return NIL."
 (defun p4-job-form-fixes ()
   "Show the fixes for this job."
   (interactive)
-  (save-excursion
-    (goto-char (point-min))
-    (when (re-search-forward "Job:\\s-+\\(\\S-+\\)$" nil t)
-      (let ((job (match-string 1)))
-        (unless (string= job "new")
-          (p4-fixes (list "-j" job)))))))
+  (let ((job (p4-form-value "Job")))
+    (when (and job (not (string= job "new")))
+      (p4-fixes (list "-j" job)))))
 
 
 ;;; Filelog mode:
