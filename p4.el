@@ -1279,8 +1279,9 @@ standard input\). If not supplied, cmd is reused.
              (funcall p4-form-commit-success-callback cmd buffer))
            (set-buffer-modified-p nil)
            (with-current-buffer buffer
-             (p4-process-show-output)
-             (p4-partial-cache-cleanup (intern cmd))))
+             (p4-process-show-output))
+           (p4-partial-cache-cleanup
+            (if (string= cmd "change") 'pending (intern cmd))))
           (p4-form-commit-failure-callback
            (funcall p4-form-commit-failure-callback cmd buffer)))))
 
