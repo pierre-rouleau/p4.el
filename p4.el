@@ -1672,7 +1672,7 @@ twice in the expansion."
       (set-buffer-modified-p nil))))
 
 (defun p4-change-success (cmd buffer)
-  (p4-change-update-form buffer "pending" "^Change \\([0-9]+\\) created\\.$"))
+  (p4-change-update-form buffer "pending" "^Change \\([0-9]+\\) created"))
 
 (defvar p4-change-head-text
   (format "# Created using Perforce-Emacs Integration version %s.
