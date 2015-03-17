@@ -3303,7 +3303,7 @@ is NIL, otherwise return NIL."
 
 (defun p4-opened-list-change (change)
   (interactive 
-   (list (p4-completing-read 'change "New change: ")))
+   (list (p4-completing-read 'pending "New change: ")))
   (save-excursion
     (beginning-of-line)
     (when (looking-at p4-basic-list-filename-regexp)
