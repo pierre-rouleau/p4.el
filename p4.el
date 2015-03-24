@@ -572,6 +572,14 @@ client settings."
    (p4-with-set-output
      (loop while (re-search-forward "^P4[A-Z]+=\\S-+" nil t)
            collect (match-string 0)))
+   ;; Default values for P4PORT and P4USER may be needed by
+   ;; p4-password-source even if not supplied by "p4 set". See:
+   ;; http://www.perforce.com/perforce/doc.current/manuals/cmdref/P4PORT.html
+   ;; http://www.perforce.com/perforce/doc.current/manuals/cmdref/P4USER.html
+   (list
+    "P4PORT=perforce:1666"
+    (concat "P4USER="
+            (or (getenv "USER") (getenv "USERNAME") (user-login-name))))
    process-environment))
 
 (defvar p4-coding-system-alist
@@ -626,7 +634,8 @@ client settings."
 
 (defun p4-current-server-port ()
   "Return the current Perforce port."
-  (p4-current-setting "P4PORT"))
+  ;; http://www.perforce.com/perforce/doc.current/manuals/cmdref/P4PORT.html
+  (or (p4-current-setting "P4PORT") "perforce:1666"))
 
 (defvar p4-server-version-cache nil
   "Association list mapping P4PORT to Perforce server version on that port.")
@@ -1464,10 +1473,9 @@ for the current Perforce settings."
                (not p4-default-directory)
                (file-accessible-directory-p default-directory))
       (p4-with-set-output
-        (when (save-excursion (re-search-forward "^P4PORT=" nil t))
-          (let ((set (buffer-substring-no-properties (point-min) (point-max))))
-            (p4-update-status-pending-add set b force)))
-      (p4-maybe-start-update-statuses)))))
+        (let ((set (buffer-substring-no-properties (point-min) (point-max))))
+          (p4-update-status-pending-add set b force)))
+      (p4-maybe-start-update-statuses))))
 
 (defun p4-refresh-buffer (&optional force verify-modtime)
   "Refresh the current buffer if it is under Perforce control and
