@@ -1462,7 +1462,7 @@ for the current Perforce settings."
   (let ((b (current-buffer)))
     (when (and p4-executable p4-do-find-file buffer-file-name
                (not p4-default-directory)
-               (file-directory-p default-directory))
+               (file-accessible-directory-p default-directory))
       (p4-with-set-output
         (when (save-excursion (re-search-forward "^P4PORT=" nil t))
           (let ((set (buffer-substring-no-properties (point-min) (point-max))))
