@@ -1659,7 +1659,7 @@ twice in the expansion."
   nil
   (p4-call-command cmd args
    :callback (lambda ()
-               (p4-regexp-create-links "^Branch \\([^ ]+\\).*\n" 'branch
+               (p4-regexp-create-links "^Branch \\([^ \t\n]+\\).*\n" 'branch
                                        "Describe branch"))))
 
 (defun p4-change-update-form (buffer new-status re)
@@ -1716,7 +1716,7 @@ twice in the expansion."
   nil
   (p4-call-command cmd args
    :callback (lambda ()
-               (p4-regexp-create-links "^Client \\([^ ]+\\).*\n" 'client
+               (p4-regexp-create-links "^Client \\([^ \t\n]+\\).*\n" 'client
                                        "Describe client"))))
 
 (defp4cmd* delete
@@ -1974,7 +1974,7 @@ continuation lines); show it in a pop-up window otherwise."
   nil
   (p4-call-command cmd args
    :callback (lambda ()
-               (p4-regexp-create-links "^Label \\([^ ]+\\).*\n" 'label
+               (p4-regexp-create-links "^Label \\([^ \t\n]+\\).*\n" 'label
                                        "Describe label"))))
 
 (defp4cmd p4-labelsync (&rest args)
@@ -2282,7 +2282,7 @@ return a buffer listing those files. Otherwise, return NIL."
   (interactive (p4-read-args* "p4 users: " "" 'user))
   (p4-call-command "users" args
    :callback (lambda ()
-               (p4-regexp-create-links "^\\([^ ]+\\).*\n" 'user
+               (p4-regexp-create-links "^\\([^ \t\n]+\\).*\n" 'user
                                        "Describe user"))))
 
 (defp4cmd* where
@@ -2315,7 +2315,7 @@ return a buffer listing those files. Otherwise, return NIL."
     (while (re-search-forward (concat
                                "^\\(\\.\\.\\. #\\([1-9][0-9]*\\) \\)?[Cc]hange "
                                "\\([1-9][0-9]*\\) \\([a-z]+\\)?.*on.*by "
-                               "\\([^ @]+\\)@\\([^ \n]+\\).*\n"
+                               "\\([^ @\n]+\\)@\\([^ \n]+\\).*\n"
                                "\\(\\(?:\n\\|[ \t].*\n\\)*\\)") nil t)
       (let* ((rev-match 2)
              (rev (and (match-string rev-match)
@@ -2380,8 +2380,8 @@ change numbers, and make the change numbers clickable."
   (save-excursion
     (let ((depot-regexp
            (if print-buffer
-               "\\(^\\)\\(//[^/@# ][^/@#]*/[^@#]+#[1-9][0-9]*\\) - "
-             "^\\(\\.\\.\\. [^/\n]*\\|==== \\)?\\(//[^/@# ][^/@#]*/[^#\n]*\\(?:#[1-9][0-9]*\\)?\\)")))
+               "\\(^\\)\\(//[^/@# \n][^/@#\n]*/[^@#\n]+#[1-9][0-9]*\\) - "
+             "^\\(\\.\\.\\. [^/\n]*\\|==== \\)?\\(//[^/@# \n][^/@#\n]*/[^#\n]*\\(?:#[1-9][0-9]*\\)?\\)")))
       (goto-char (point-min))
       (while (re-search-forward depot-regexp nil t)
         (let* ((p4-depot-file (match-string-no-properties 2))
@@ -2404,7 +2404,7 @@ first line of outputput from \"p4 print\". If the optional
 argument DELETE-FILESPEC is non-NIL, remove the first line."
   (save-excursion
     (goto-char (point-min))
-    (when (looking-at "^//[^#@]+/\\([^/#@]+\\).*\n")
+    (when (looking-at "^//[^#@\n]+/\\([^/#@\n]+\\).*\n")
       (let ((buffer-file-name (match-string 1))
             (first-line (match-string-no-properties 0))
             (inhibit-read-only t))
@@ -2427,8 +2427,8 @@ argument DELETE-FILESPEC is non-NIL, remove the first line."
     (p4-mark-depot-list-buffer print-buffer)
     (let ((depot-regexp
            (if print-buffer
-               "^\\(//[^/@# ][^/@#]*/\\)[^@#]+#[1-9][0-9]* - "
-             "^\\(//[^/@# ][^/@#]*/\\)")))
+               "^\\(//[^/@# \n][^/@#\n]*/\\)[^@#\n]+#[1-9][0-9]* - "
+             "^\\(//[^/@# \n][^/@#\n]*/\\)")))
       (goto-char (point-min))
       (while (re-search-forward depot-regexp nil t)
         (let ((link-client-name (get-char-property (match-end 1)
@@ -2497,7 +2497,7 @@ argument DELETE-FILESPEC is non-NIL, remove the first line."
       (p4-find-change-numbers (point-min) stop))
 
     (goto-char (point-min))
-    (when (looking-at "^Change [1-9][0-9]* by \\([^ @]+\\)@\\([^ \n]+\\)")
+    (when (looking-at "^Change [1-9][0-9]* by \\([^ @\n]+\\)@\\([^ \n]+\\)")
       (p4-create-active-link-group 1 `(user ,(match-string-no-properties 1))
                                    "Describe user")
       (p4-create-active-link-group 2 `(client ,(match-string-no-properties 2))
@@ -2507,7 +2507,7 @@ argument DELETE-FILESPEC is non-NIL, remove the first line."
   (let ((inhibit-read-only t))
     (save-excursion
       (goto-char (point-min))
-      (while (re-search-forward "^\\(\\S-+\\) fixed by change \\([0-9]+\\) on [0-9/]+ by \\([^ @]+\\)@\\([^ \n]+\\)" nil t)
+      (while (re-search-forward "^\\(\\S-+\\) fixed by change \\([0-9]+\\) on [0-9/]+ by \\([^ @\n]+\\)@\\([^ \n]+\\)" nil t)
         (p4-create-active-link-group 1 `(job ,(match-string-no-properties 1)))
         (p4-create-active-link-group 2 `(change ,(string-to-number (match-string 2))))
         (p4-create-active-link-group 3 `(user ,(match-string-no-properties 3)))
@@ -2527,9 +2527,9 @@ argument DELETE-FILESPEC is non-NIL, remove the first line."
 (defconst p4-blame-change-regex
   (concat "^\\.\\.\\. #"     "\\([1-9][0-9]*\\)"   ; revision
           "\\s-+change\\s-+" "\\([1-9][0-9]*\\)"   ; change
-          "\\s-+"            "\\([^ \t]+\\)"       ; type
-          "\\s-+on\\s-+"     "\\([^ \t]+\\)"       ; date
-          "\\s-+by\\s-+"     "\\([^ \t]+\\)"       ; author
+          "\\s-+"            "\\([^ \t\n]+\\)"       ; type
+          "\\s-+on\\s-+"     "\\([^ \t\n]+\\)"       ; date
+          "\\s-+by\\s-+"     "\\([^ \t\n]+\\)"       ; author
           "@.*\n\n\t\\(.*\\)"))                    ; description
 
 (defconst p4-blame-revision-regex
@@ -2896,7 +2896,7 @@ and update the cache accordingly."
 (defun p4-arg-completion-builder (completion)
   (lexical-let ((completion completion))
     (lambda (string predicate action)
-      (string-match "^\\(\\(?:.* \\)?\\)\\([^ ]*\\)$" string)
+      (string-match "^\\(\\(?:.* \\)?\\)\\([^ \t\n]*\\)$" string)
       (let* ((first (match-string 1 string))
              (remainder (match-string 2 string))
              (f (p4-completion-completion-fn completion))
@@ -3292,7 +3292,7 @@ is NIL, otherwise return NIL."
         (if (match-string 3)
             (let ((args (list "where" (match-string 2))))
               (p4-with-temp-buffer args
-                (when (looking-at "//[^ ]+ //[^ ]+ \\(.*\\)")
+                (when (looking-at "//[^ \n]+ //[^ \n]+ \\(.*\\)")
                   (find-file (match-string 1)))))
           (p4-depot-find-file (match-string 1)))))))
 
@@ -3364,7 +3364,7 @@ is NIL, otherwise return NIL."
 
 (defvar p4-form-font-lock-keywords
   '(("^#.*$" . 'p4-form-comment-face)
-    ("^[^ \t:]+:" . 'p4-form-keyword-face)))
+    ("^[^ \t\n:]+:" . 'p4-form-keyword-face)))
 
 (defvar p4-form-mode-map
   (let ((map (make-sparse-keymap)))
@@ -3678,7 +3678,7 @@ file, but a prefix argument reverses this."
                    0))))
     (move-to-column old-column)
     (if (and (< (current-column) colon)
-             (re-search-forward "[^ ][ :]" nil t))
+             (re-search-forward "[^ \n][ :]" nil t))
         (goto-char (match-beginning 0)))))
 
 (defun p4-next-change-rev-line ()
@@ -3686,7 +3686,7 @@ file, but a prefix argument reverses this."
   (interactive)
   (let ((c (current-column)))
     (move-to-column 1)
-    (re-search-forward "^ *[0-9]+ +[0-9]+[^:]+:" nil "")
+    (re-search-forward "^ *[0-9]+ +[0-9]+[^:\n]+:" nil "")
     (p4-moveto-print-rev-column c)))
 
 (defun p4-prev-change-rev-line ()
@@ -3695,7 +3695,7 @@ file, but a prefix argument reverses this."
   (let ((c (current-column)))
     (forward-line -1)
     (move-to-column 32)
-    (re-search-backward "^ *[0-9]+ +[0-9]+[^:]*:" nil "")
+    (re-search-backward "^ *[0-9]+ +[0-9]+[^:\n]*:" nil "")
     (p4-moveto-print-rev-column c)))
 
 (defun p4-toggle-line-wrap ()
