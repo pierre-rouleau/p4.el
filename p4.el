@@ -355,14 +355,7 @@ commit command.")
 
 ;;; P4 minor mode:
 
-(defvar p4-minor-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map "\C-x\C-q" 'p4-toggle-read-only)
-    map)
-  "Keymap for P4 minor mode")
-(fset 'p4-minor-map p4-minor-map)
 (add-to-list 'minor-mode-alist '(p4-mode p4-mode))
-(add-to-list 'minor-mode-map-alist '(p4-mode . p4-minor-map))
 
 
 ;;; Keymap:
