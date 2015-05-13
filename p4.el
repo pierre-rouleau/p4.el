@@ -2095,9 +2095,8 @@ changelist."
     (setq buffer (get-buffer buf-name))
     (if (and (buffer-live-p buffer)
              (not (comint-check-proc buffer)))
-        (save-excursion
-          (let ((cur-dir default-directory))
-            (set-buffer buffer)
+        (let ((cur-dir default-directory))
+          (with-current-buffer buffer
             (cd cur-dir)
             (goto-char (point-max))
             (insert "\n--------\n\n"))))
