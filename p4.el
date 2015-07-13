@@ -215,43 +215,43 @@ flags."
   "Face used for section heading."
   :group 'p4-faces)
 
-(defface p4-link-face '((t :weight bold))
+(defface p4-link-face '((t (:weight bold)))
   "Face used to highlight clickable links."
   :group 'p4-faces)
 
-(defface p4-action-face '((t :inherit p4-link-face))
+(defface p4-action-face '((t (:inherit p4-link-face)))
   "Face used to highlight Perforce actions (add/edit/integrate/delete)."
   :group 'p4-faces)
 
-(defface p4-branch-face '((t :inherit p4-link-face))
+(defface p4-branch-face '((t (:inherit p4-link-face)))
   "Face used to highlight Perforce branches."
   :group 'p4-faces)
 
-(defface p4-change-face '((t :inherit p4-link-face))
+(defface p4-change-face '((t (:inherit p4-link-face)))
   "Face used to highlight Perforce change numbers."
   :group 'p4-faces)
 
-(defface p4-client-face '((t :inherit p4-link-face))
+(defface p4-client-face '((t (:inherit p4-link-face)))
   "Face used to highlight Perforce users."
   :group 'p4-faces)
 
-(defface p4-filespec-face '((t :inherit p4-link-face))
+(defface p4-filespec-face '((t (:inherit p4-link-face)))
   "Face used to highlight Perforce filespec."
   :group 'p4-faces)
 
-(defface p4-job-face '((t :inherit p4-link-face))
+(defface p4-job-face '((t (:inherit p4-link-face)))
   "Face used to highlight Perforce job names."
   :group 'p4-faces)
 
-(defface p4-label-face '((t :inherit p4-link-face))
+(defface p4-label-face '((t (:inherit p4-link-face)))
   "Face used to highlight Perforce labels."
   :group 'p4-faces)
 
-(defface p4-revision-face '((t :inherit p4-link-face))
+(defface p4-revision-face '((t (:inherit p4-link-face)))
   "Face used to highlight Perforce revision numbers."
   :group 'p4-faces)
 
-(defface p4-user-face '((t :inherit p4-link-face))
+(defface p4-user-face '((t (:inherit p4-link-face)))
   "Face used to highlight Perforce users."
   :group 'p4-faces)
 
@@ -279,11 +279,11 @@ flags."
   "Face used for files open for edit."
   :group 'p4-faces)
 
-(defface p4-form-comment-face '((t :inherit font-lock-comment-face))
+(defface p4-form-comment-face '((t (:inherit font-lock-comment-face)))
   "Face for comment in P4 Form mode."
   :group 'p4-faces)
 
-(defface p4-form-keyword-face '((t :inherit font-lock-keyword-face))
+(defface p4-form-keyword-face '((t (:inherit font-lock-keyword-face)))
   "Face for keyword in P4 Form mode."
   :group 'p4-faces)
 
