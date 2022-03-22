@@ -11,7 +11,7 @@ Introduction
 .. _Perforce: http://www.perforce.com/
 .. _GNU Emacs: http://www.gnu.org/software/emacs/
 .. _VC: http://www.gnu.org/software/emacs/manual/html_node/emacs/Version-Control.html
-.. _VC-P4: http://public.perforce.com/wiki/Emacs_VC-P4
+.. _VC-P4: https://swarm.workshop.perforce.com/files/guest/magnus_henoch/vc-p4
 
 
 Installation
